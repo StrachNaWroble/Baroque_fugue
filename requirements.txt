@@ -1,0 +1,5 @@
+# Core computational musicology and music theory framework
+music21>=9.0.0
+
+# Optional development and testing dependencies
+pytest>=7.0.0
