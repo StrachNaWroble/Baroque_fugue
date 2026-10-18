@@ -185,5 +185,4 @@ Fuga_barokowa/
 ## Author
 
 **Justyna Rojek-Nowosielska**  
-University of Wrocław (Computer Science & Art History)  
-GitHub: [@StrachNaWroble](https://github.com/StrachNaWroble)
+University of Wrocław 
