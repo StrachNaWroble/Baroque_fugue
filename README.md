@@ -1,135 +1,122 @@
-# Baroque Fugue Generator (Fuga Barokowa)
+# Baroque Fugue Generator
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Music21](https://img.shields.io/badge/musicology-music21-orange.svg)](https://web.mit.edu/music21/)
-[![Tests](https://img.shields.io/badge/tests-9%2F9%20passing-brightgreen.svg)]()
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+Algorithmic polyphonic composition using Hill Climbing search and species counterpoint constraints.
 
-An algorithmic composition engine that synthesizes multi-voice Baroque fugues from monophonic themes using **heuristic search (Hill Climbing)**, **species counterpoint constraints**, and **computational musicology (`music21`)**.
+## Overview and Design Objective
 
-The engine transforms an initial melodic subject into an authentic, multi-section polyphonic work for pipe organ, balancing strict 18th-century harmonic rules (consonance, resolution of parallel intervals, voice leading) with melodic independence across up to 8 voices.
+This project explores algorithmic composition of multi-voice Baroque counterpoint using heuristic optimization with Python and `music21`.
+
+**Primary Goal:** The engine was designed with a specific optimization challenge in mind: **to maximize the total number of notes and rhythmic density** across multiple voices while strictly adhering to classical counterpoint rules (vertical consonance, avoidance of parallel fifths and octaves, and voice independence).
+
+Because the fitness function heavily rewards dense polyphonic activity and layers transformations (dux, comes, inversion, retrograde) across up to 8 voices, **the original subject is deliberately submerged into a thick, continuous polyphonic web** rather than standing out as a clear, exposed solo melody. The output is structured for pipe organ in condensed grand staff notation.
 
 ---
 
-## 🎼 Sample Output Showcase
+## Sample Output
 
-Below is an excerpt of a generated 4-voice fugue based on Bart Howard's *"Fly Me to the Moon"*, synthesized and formatted for pipe organ grand staff notation:
+Below is an excerpt of a generated 4-voice fugue based on Bart Howard's *"Fly Me to the Moon"*, synthesized and formatted for pipe organ:
 
 ![Generated Baroque Fugue Score](assets/score_preview.png)
 
-### Listen & Inspect Pre-Generated Scores:
-- 🔊 **Audio Recording (MP3):** [`samples/fly_me_to_the_moon_fugue.mp3`](samples/fly_me_to_the_moon_fugue.mp3)
-- 🎹 **MIDI File:** [`samples/fly_me_to_the_moon_fugue.mid`](samples/fly_me_to_the_moon_fugue.mid)
-- 📄 **Sheet Music (PDF):** [`samples/fly_me_to_the_moon_fugue.pdf`](samples/fly_me_to_the_moon_fugue.pdf)
-- 🎼 **Full MusicXML Score:** [`samples/fly_me_to_the_moon_fugue.musicxml`](samples/fly_me_to_the_moon_fugue.musicxml)
+### Pre-Generated Files
+- Audio recording (MP3): [`samples/fly_me_to_the_moon_fugue.mp3`](samples/fly_me_to_the_moon_fugue.mp3)
+- MIDI file: [`samples/fly_me_to_the_moon_fugue.mid`](samples/fly_me_to_the_moon_fugue.mid)
+- Sheet music (PDF): [`samples/fly_me_to_the_moon_fugue.pdf`](samples/fly_me_to_the_moon_fugue.pdf)
+- Full score (MusicXML): [`samples/fly_me_to_the_moon_fugue.musicxml`](samples/fly_me_to_the_moon_fugue.musicxml)
 
 ---
 
-## 🏛️ System Architecture
+## Architecture and Pipeline
 
-The composition pipeline processes a monophonic theme through three formal contrapuntal sections, assembling voices sequentially using heuristic search and constraint resolution:
+The engine takes a monophonic theme, validates its structure, and synthesizes three sequential fugal sections before applying post-processing for organ performance:
 
 ```mermaid
 flowchart TD
-    A["Input Theme<br/>(.musicxml, .mscz, .mid)"] --> B["Theme Validator<br/>(judge_my_theme)"]
-    B -->|Passed| C["Fugal Form Orchestration"]
-    B -->|Warning| C
+    A["Input Theme (.musicxml, .mscz, .mid)"] --> B["Theme Validation (judge_my_theme)"]
+    B --> C["Section 1: Exposition (Dux Subject)"]
+    B --> D["Section 2: Development (Comes Tonal Answer)"]
+    B --> E["Section 3: Stretto / Mirror (Inversion & Retrograde)"]
 
-    subgraph C ["Fugal Form Generation"]
-        S1["Section 1: Exposition<br/>(Dux Subject)"]
-        S2["Section 2: Development<br/>(Comes Tonal Answer)"]
-        S3["Section 3: Stretto / Mirror<br/>(Retrograde & Inversion)"]
+    subgraph Search ["Hill Climbing Optimization (Per Voice)"]
+        S1["Candidate Transformation"] --> S2["Entry Offset Search (p in [0, T/2])"]
+        S2 --> S3["Local Chromatic Conflict Repair"]
+        S3 --> S4["Fitness Evaluation"]
     end
 
-    subgraph HC ["Hill Climbing Optimization (Per Voice)"]
-        T["Thematic Pool Selection"] --> M["Contrapuntal Transformation<br/>(Transposition, Inversion, Retrograde, Augmentation)"]
-        M --> P["Temporal Offset Search<br/>(Evaluate p ∈ [0, T/2])"]
-        P --> CR["Constraint Resolution<br/>(Chromatic Dissonance Shift)"]
-        CR --> E["Fitness Evaluation<br/>(Consonance + Density + Independence)"]
-    end
+    C --> Search
+    D --> Search
+    E --> Search
 
-    S1 --> HC
-    S2 --> HC
-    S3 --> HC
-
-    HC --> D["Structural Assembly<br/>(append_score)"]
-    D --> E2["Cadential Tonic Pedal Point"]
-    E2 --> F["Post-Processing<br/>(Rest Compaction & Organ Staff Reduction)"]
-    F --> G["Export Engine<br/>(MusicXML, MIDI, MP3, PDF)"]
+    Search --> F["Score Concatenation (append_score)"]
+    F --> G["Final Tonic Pedal Note"]
+    G --> H["Post-Processing (Rest cleanup & Grand Staff condensation)"]
+    H --> I["Export (MusicXML, MIDI, MP3, PDF)"]
 ```
 
 ---
 
-## 🧠 Algorithmic & Musicological Foundation
+## Musicological and Algorithmic Rules
 
-### 1. Subject Validation (`judge_my_theme`)
-Before polyphonic synthesis, the candidate theme is verified against classical fugue subject criteria:
-- **Tonal Entry:** The initial note must land on the **tonic** (degree 1) or **dominant** (degree 5) of the analyzed key.
-- **Metric Regularity:** Fixed to common time ($4/4$).
-- **Formal Proportion:** Theme duration restricted between 2.0 and 5.0 measures (8 to 20 beats).
-- **Vocal Compass:** Total pitch range must not exceed one octave ($\le 12$ semitones) to ensure singable and contrapuntally viable lines.
+### 1. Subject Requirements (`judge_my_theme`)
+Before generating counter-melodies, the input subject is checked against classical rules:
+- **Tonal Entry:** The subject must begin on either the tonic (scale degree 1) or dominant (scale degree 5).
+- **Meter:** Set to 4/4 common time.
+- **Length:** Bounded between 2.0 and 5.0 measures (8 to 20 quarter beats).
+- **Range:** Melodic compass must not exceed one octave (12 semitones).
 
-### 2. Classical Contrapuntal Transformations
-The algorithm generates candidate counter-melodies by drawing from canonical Baroque operations:
-- **Dux (Subject):** The original theme in its primary form.
-- **Comes (Tonal Answer):** Transposed to the dominant ($+7$ or $-5$ semitones), with tonal interval muting applied to the initial leap to preserve tonal stability.
-- **Inversion (Mirror Counterpoint):** Melodic intervals reflected about the horizontal axis ($\Delta p' = -\Delta p$).
-- **Retrograde (Cancrizans / Crab Canon):** Temporal reversal of the note sequence.
-- **Augmentation & Diminution:** Rhythmic scaling by factors of $2.0$ (half tempo) and $0.5$ (double tempo).
-- **Diatonic Shift:** Shifting melody degrees by diatonic scale steps within the extracted key signature.
+### 2. Contrapuntal Transformations
+Candidate voices are constructed using standard compositional operations from 18th-century counterpoint:
+- **Dux (Subject):** The primary thematic statement.
+- **Comes (Tonal Answer):** Transposed to the dominant (+7 or -5 semitones), with interval adjustment applied to early melodic leaps to maintain key stability.
+- **Inversion:** Mirror motion where ascending intervals become descending intervals of equal size.
+- **Retrograde (Cancrizans):** The theme played strictly in reverse order.
+- **Augmentation and Diminution:** Metric tempo scaling (half speed / double speed).
+- **Diatonic Harmony Shift:** Stepwise transposition along scale degrees of the analyzed key.
 
-### 3. Heuristic Search (Hill Climbing)
-To construct an $N$-voice texture, voices are added iteratively. For each new voice layer:
-1. $n$ candidate transformations are generated stochastically.
-2. For each candidate, all valid entry delays $p \in [0, \lfloor T / 2 \rfloor]$ are tested.
-3. Clashing dissonances are repaired via minimal chromatic shifts.
-4. The candidate with the highest global fitness score is accepted into the polyphonic score.
+### 3. Hill Climbing Search and Objective Function
+Voices are added sequentially. For each new voice layer, candidate transformations are generated and evaluated across all valid entry offsets $p$.
 
-### 4. Objective Fitness Function
-The scoring function evaluates vertical harmonic quality, active texture density, and voice independence:
+The fitness function scores three distinct musical properties:
 
-$$\text{Fitness}(S) = \sum_{c \in \text{Chords}(S)} \left[ 20 \cdot V_c^2 \cdot d_c + \sum_{(p_i, p_j)} \text{IntervalScore}(p_i, p_j) \cdot d_c \right] + 500 \cdot \overline{\text{Divergence}}$$
+$$\text{Fitness}(S) = \sum_{c \in \text{Chords}(S)} \left[ 20 \cdot V_c^2 \cdot d_c + \sum_{(p_i, p_j)} \text{Consonance}(p_i, p_j) \cdot d_c \right] + 500 \cdot \overline{\text{Divergence}}$$
 
-Where:
-- $V_c$ is the number of active distinct pitch classes in vertical slice $c$.
-- $d_c$ is the duration (in quarter notes) of vertical slice $c$.
-- **Interval Scoring:**
-  - **Imperfect Consonances (Major/Minor 3rds & 6ths):** $+15 \cdot d_c$ (core harmonic foundation).
-  - **Perfect Consonances (5ths, Octaves):** $+5 \cdot d_c$.
-  - **Harsh Dissonances & Unison Collisions (2nds, 7ths, Tritones, 0 semitones):** $-100 \cdot d_c$.
-- **Voice Divergence ($\overline{\text{Divergence}}$):** Rewards melodic and rhythmic independence between voice pairs, preventing parallel movement or voice duplication.
+- **Density & Voice Count ($20 \cdot V_c^2 \cdot d_c$):** Strong non-linear incentive to keep as many distinct voices active simultaneously as possible, driving the maximal note density.
+- **Harmonic Consonance:**
+  - Major/minor thirds and sixths: $+15 \cdot d_c$
+  - Perfect fifths and octaves: $+5 \cdot d_c$
+  - Dissonances (unisons, seconds, sevenths, tritones): $-100 \cdot d_c$
+- **Voice Independence ($500 \cdot \overline{\text{Divergence}}$):** Compares pitch intervals and rhythmic contours between voices to penalize identical or parallel motion.
 
-### 5. Constraint Resolution & Voice Leading
-When a candidate voice is placed at offset $p$, local note collisions are handled dynamically:
-- Unisons ($0$ st), minor/major seconds ($1, 2$ st), tritones ($6$ st), and minor/major sevenths ($10, 11$ st) trigger a chromatic neighborhood search.
-- The colliding note is shifted by the minimal semitone displacement ($\pm 1 \dots \pm 12$) that converts the vertical clash into a consonant interval.
+### 4. Conflict Resolution
+When a candidate voice is placed at an offset, any direct vertical collisions that produce harsh dissonances (minor/major seconds, tritones, unisons) are dynamically repaired: the note is shifted by the smallest chromatic interval ($\pm 1 \dots \pm 12$ semitones) that restores vertical consonance with existing voices.
 
 ---
 
-## 🚀 Quickstart
+## Quickstart
 
-### Prerequisites
-- Python 3.10 or higher.
-- *(Optional)* [MuseScore 3](https://musescore.org/) (for converting `.mscz` files and rendering MP3/PDF directly).
+### Requirements
+- Python 3.10+
+- `music21` library
+- *(Optional)* MuseScore 3 (only needed if using `.mscz` files directly or exporting MP3/PDF)
 
-### Installation
+### Setup
 ```bash
-# Clone the repository
 git clone git@github.com:StrachNaWroble/Fuga_barokowa.git
 cd Fuga_barokowa
-
-# Install Python dependencies
 pip install -r requirements.txt
 ```
 
-### Basic Usage
-Generate a 4-voice fugue from the included sample theme:
+### Running the Generator
+Run with default settings (uses included sample theme, 4 voices):
 ```bash
 python ofuga.py
 ```
-This produces `output/fugue.musicxml` by default.
+Or use the convenience runner:
+```bash
+python generate_fugue.py
+```
 
-### Advanced CLI Options
+### CLI Options
 ```bash
 python ofuga.py \
   --input examples/fly_me_to_the_moon.musicxml \
@@ -142,58 +129,43 @@ python ofuga.py \
   --export-pdf
 ```
 
-| Argument | Type | Default | Description |
+| Option | Type | Default | Description |
 |---|---|---|---|
-| `-i`, `--input` | `str` | `examples/fly_me_to_the_moon.musicxml` | Input score path (`.musicxml`, `.mscz`, or `.mid`) |
+| `-i`, `--input` | `str` | `examples/fly_me_to_the_moon.musicxml` | Input score path (`.musicxml`, `.mscz`, `.mid`) |
 | `-o`, `--output` | `str` | `output/fugue.musicxml` | Destination MusicXML path |
-| `-v`, `--voices` | `int` | `4` | Number of polyphonic voices per section |
-| `-n`, `--iterations` | `int` | `8` | Number of candidate transformations evaluated per voice layer |
+| `-v`, `--voices` | `int` | `4` | Polyphonic voices per section |
+| `-n`, `--iterations` | `int` | `8` | Candidates evaluated per voice layer |
 | `-s`, `--seed` | `int` | `None` | Random seed for deterministic generation |
 | `--export-midi` | flag | `False` | Also export `.mid` MIDI audio |
-| `--export-mp3` | flag | `False` | Also render `.mp3` audio *(requires MuseScore)* |
-| `--export-pdf` | flag | `False` | Also render `.pdf` score sheet *(requires MuseScore)* |
+| `--export-mp3` | flag | `False` | Export `.mp3` audio (requires MuseScore) |
+| `--export-pdf` | flag | `False` | Export `.pdf` score (requires MuseScore) |
 
 ---
 
-## 🧪 Testing
+## Tests
 
-The repository contains automated unit and integration tests covering musical transformations, constraint validation, and fitness monotonicity:
-
+Run the test suite using Python's built-in `unittest`:
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-Expected output:
-```text
-test_answer_generation ... ok
-test_clean_score_rest_merging ... ok
-test_harmonic_evaluation_consonance_vs_dissonance ... ok
-test_inversion_direction ... ok
-test_retrograde_reversal ... ok
-test_run_hill_climbing_smoke ... ok
-test_theme_validation_exceeding_octave ... ok
-test_theme_validation_invalid_meter ... ok
-test_theme_validation_valid ... ok
-
-Ran 9 tests in 0.17s - OK
-```
+Tests cover subject validation constraints, inversion and retrograde correctness, consonance scoring preferences, and score cleanup.
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```
 Fuga_barokowa/
-├── README.md                 # Project documentation & analysis
-├── requirements.txt          # Python dependencies (music21)
-├── LICENSE                   # MIT License
+├── README.md                 # Project documentation
+├── requirements.txt          # Python dependencies
 ├── .gitignore                # Git exclusions
-├── ofuga.py                  # Main fugue generator & CLI interface
+├── ofuga.py                  # Main fugue generator and CLI
 ├── generate_fugue.py         # Convenience runner alias
-├── music_lib.py              # Musical operations, scoring, & score cleaner
-├── assets/                   # Visual previews and diagram assets
+├── music_lib.py              # Music library, scoring, and score cleaner
+├── assets/
 │   └── score_preview.png     # Rendered organ score preview
-├── examples/                 # Ready-to-use input themes
+├── examples/                 # Sample input themes
 │   ├── fly_me_to_the_moon.musicxml
 │   ├── fly_me_to_the_moon.mscz
 │   ├── bach_art_of_fugue.musicxml
@@ -204,30 +176,14 @@ Fuga_barokowa/
 │   ├── fly_me_to_the_moon_fugue.mid
 │   ├── fly_me_to_the_moon_fugue.mp3
 │   └── fly_me_to_the_moon_fugue.pdf
-└── tests/                    # Automated test suite
-    └── test_counterpoint.py  # Unit tests for transformations & fitness
+└── tests/
+    └── test_counterpoint.py  # Unit test suite
 ```
 
 ---
 
-## 💡 Engineering Highlights for Recruiters
-
-- **Domain-Informed Heuristic Optimization:** Instead of treating music generation as an unconstrained search or black-box model, the system encodes 18th-century counterpoint rules (Fux, Bach) directly into the objective function and constraint propagation pipeline.
-- **Fast Convergence:** While early experiments with genetic algorithms required high generation counts with frequent harmonic collapse, Hill Climbing with targeted chromatic repair converges cleanly in seconds while preserving voice leading rules.
-- **Polyphonic Score Formatting:** Raw polyphonic lines are automatically condensed into 2-voice keyboard staves (Pipe Organ Treble/Bass), with overlapping rests removed and consecutive rests merged into standard notation.
-- **Robust Multi-Format Ingestion:** Seamlessly handles `.musicxml`, `.mid`, and `.mscz` files with automated fallback if external converters are unavailable.
-
----
-
-## 👩‍💻 Author
+## Author
 
 **Justyna Rojek-Nowosielska**  
-- B.Sc. in Computer Science & B.A. in Art History — *University of Wrocław*
-- GitHub: [@StrachNaWroble](https://github.com/StrachNaWroble)
-- 3-times Semi-finalist at the Polish Olympiad in Informatics (OI)
-
----
-
-## 📄 License
-
-This project is licensed under the [MIT License](LICENSE).
+University of Wrocław (Computer Science & Art History)  
+GitHub: [@StrachNaWroble](https://github.com/StrachNaWroble)
